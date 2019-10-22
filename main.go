@@ -69,3 +69,106 @@ func isValidBlock(newBlock, oldBlock Block) bool{
 
 	return true
 }
+
+func replaceChain(newBlocks []Block){
+	if len(newBlocks) > len(BlockChain) {
+		BlockChain = newBlocks
+	}
+}
+
+func run() error{
+	mux := makeMuxRouter()
+	httpAddr := os.Getenv("PORT")
+	log.Println("Listening on ", os.Getenv("PORT"))
+	s := &http.Server{
+		Addr:	":"+httpAddr,
+		Handler:	mux,
+		ReadTimeout:	10* time.Second,
+		WriteTimeout:	10* time.Second,
+		MaxHeaderBytes:	1 << 20,
+	}
+
+	if err := s.ListenAndServe(); err!=nil {
+		return err
+	}
+
+	return nil
+}
+
+func makeMuxRouter() http.Handler{
+	muxRouter := mux.NewRouter()
+	muxRouter.HandleFunc("/", handleGetBlockchain).Methods("GET")
+	muxRouter.HandleFunc("/", handlePostBlockchain).Methods("POST")
+
+	return muxRouter
+}
+
+func handleGetBlockchain(w http.ResponseWriter, r *http.Request){
+	bytes, err := json.MarshalIndent(BlockChain,""," ")
+	
+	if err!=nil{
+		http.Error(w,err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	io.WriteString(w, string(bytes))
+}
+
+type Message struct{
+	Mahastudent
+}
+
+func handlePostBlockchain(w http.ResponseWriter, r *http.Request){
+	var m Message
+
+	decoder := json.NewDecoder(r.Body)
+
+	if err:=decoder.Decode(&m); err!=nil {
+		respondWithJSON(w, r, http.StatusBadRequest, r.Body)
+		return
+	}
+
+	defer r.Body.Close()
+
+	newBlock, err := generateBlock(BlockChain[len(BlockChain)-1], m.Mahastudent)
+
+	if err!=nil {
+		respondWithJSON(w, r, http.StatusInternalServerError, m)
+	}
+
+	if isValidBlock(newBlock, BlockChain[len(BlockChain)-1]){
+		newBlockchain := append(BlockChain, newBlock);
+		replaceChain(newBlockchain)
+		spew.Dump(BlockChain)
+	}
+
+	respondWithJSON(w, r, http.StatusCreated, newBlock)
+}
+
+func respondWithJSON(w http.ResponseWriter, r *http.Request, code int, payload interface{}){
+	response, err := json.MarshalIndent(payload,""," ")
+	if err!=nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("HTTP 500: Internal Server Error"))
+		return
+	}
+
+	w.WriteHeader(code)
+	w.Write(response)
+}
+
+func main()  {
+	err := godotenv.Load()
+	if err!=nil {
+		log.Fatal(err)
+	}
+
+	go func(){
+		t := time.Now()
+		genesisBlock := Block{0,t.String(),Mahastudent{"","",0},"",""}
+		spew.Dump(genesisBlock)
+
+		BlockChain = append(BlockChain, genesisBlock)
+	}()
+	log.Fatal(run())
+}
