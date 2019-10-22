@@ -53,3 +53,19 @@ func generateBlock(oldBlock Block, Mahasiswa Mahastudent)(Block, error){
 
 	return newBlock, nil
 }
+
+func isValidBlock(newBlock, oldBlock Block) bool{
+	if oldBlock.Index + 1 != newBlock.Index {
+		return false
+	}
+
+	if oldBlock.Hash != newBlock.PrevHash {
+		return false
+	}
+
+	if createHash(newBlock) != newBlock.Hash {
+		return false
+	}
+
+	return true
+}
