@@ -40,3 +40,16 @@ func createHash(block Block) string{
 	return hex.EncodeToString(hashed)
 }
 
+func generateBlock(oldBlock Block, Mahasiswa Mahastudent)(Block, error){
+	var newBlock Block
+
+	t := time.Now()
+
+	newBlock.Index = oldBlock.Index + 1
+	newBlock.Timestamp = t.String()
+	newBlock.Mahastudent = Mahasiswa
+	newBlock.PrevHash = oldBlock.Hash
+	newBlock.Hash = createHash(newBlock)
+
+	return newBlock, nil
+}
